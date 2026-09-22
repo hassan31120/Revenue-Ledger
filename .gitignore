@@ -1,7 +1,4 @@
 /.phpunit.cache
-/node_modules
-/public/build
-/public/hot
 /public/storage
 /storage/*.key
 /storage/pail
@@ -13,11 +10,15 @@
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
-npm-debug.log
-yarn-error.log
 /auth.json
 /.fleet
 /.idea
 /.nova
 /.vscode
 /.zed
+.DS_Store
+
+# Filament ships precompiled assets; `composer install` republishes them via the
+# post-autoload-dump hook. This project has no npm/Vite build step at all.
+/public/css/filament
+/public/js/filament

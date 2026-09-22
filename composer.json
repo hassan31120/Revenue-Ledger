@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "career180/instructor-revenue-ledger",
     "type": "project",
-    "description": "Instructor Revenue Ledger \u2014 an auditable, idempotent, concurrency-safe LMS revenue and payout system.",
+    "description": "Instructor Revenue Ledger — an auditable, idempotent, concurrency-safe LMS revenue and payout system.",
     "keywords": [
         "laravel",
         "ledger",
@@ -42,7 +42,8 @@
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi",
-            "@php artisan filament:upgrade"
+            "@php artisan filament:upgrade",
+            "@php artisan filament:assets --ansi"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
@@ -78,5 +79,6 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "license": "proprietary"
 }
