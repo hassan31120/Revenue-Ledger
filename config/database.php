@@ -56,7 +56,51 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            'engine' => 'InnoDB',
+
+            /*
+             * Pin the connection to UTC.
+             *
+             * Laravel writes datetimes in the application timezone (UTC). Without
+             * this, MySQL interprets those strings in the SERVER's timezone, which
+             * here is Africa/Cairo. Local times that do not exist — 00:00:00 on a
+             * DST spring-forward date — are then rejected outright, and times in
+             * the autumn fold are silently ambiguous.
+             *
+             * A financial timestamp must never be ambiguous or unstorable, so the
+             * application and the database agree on UTC and render local only at
+             * the edges.
+             */
+            'timezone' => '+00:00',
+
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
+        /*
+         * A SECOND, INDEPENDENT connection to the same database.
+         *
+         * Used only by the concurrency suite, to act as a genuinely separate
+         * worker: its own session, its own transaction, its own locks. Claims
+         * about row locking and unique constraints cannot be tested honestly
+         * from a single connection, because a session always sees its own
+         * uncommitted writes and never blocks on its own locks.
+         */
+        'mysql_worker_b' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '3306'),
+            'database' => env('DB_DATABASE', 'laravel'),
+            'username' => env('DB_USERNAME', 'root'),
+            'password' => env('DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => 'InnoDB',
+            'timezone' => '+00:00',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

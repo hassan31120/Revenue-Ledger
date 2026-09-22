@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -21,6 +22,13 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
+
+// Concurrency tests act as two independent workers, so they must COMMIT their
+// setup data — a second connection cannot see another session's open
+// transaction. They migrate per test instead of wrapping it in one.
+pest()->extend(TestCase::class)
+    ->use(DatabaseMigrations::class)
+    ->in('Concurrency');
 
 /*
 |--------------------------------------------------------------------------

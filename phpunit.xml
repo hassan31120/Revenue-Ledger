@@ -11,6 +11,14 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <!--
+            Concurrency tests need genuinely separate database sessions, so they
+            cannot run inside RefreshDatabase's wrapping transaction: a second
+            connection would not see the first one's uncommitted setup data.
+        -->
+        <testsuite name="Concurrency">
+            <directory>tests/Concurrency</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
@@ -47,6 +55,6 @@
 
         <!-- Deterministic provider behaviour by default; individual tests opt into failure modes. -->
         <env name="PAYOUTS_MOCK_MODE" value="success"/>
-        <env name="PAYOUTS_MIN_AMOUNT_MINOR" value="0"/>
+        <env name="PAYOUTS_MINIMUM_MINOR" value="0"/>
     </php>
 </phpunit>
