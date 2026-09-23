@@ -23,5 +23,12 @@ return [
 
     'provider' => [
         'mock_mode' => env('PAYOUTS_MOCK_MODE', 'success'),
+
+        'random_weights' => [
+            'success' => 70,
+            'permanent_failure' => 10,
+            'timeout_after_success' => 10,
+            'timeout_before_success' => 10,
+        ],
     ],
 ];

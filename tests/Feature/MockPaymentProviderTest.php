@@ -190,3 +190,90 @@ it('rejects an unknown mode rather than guessing', function () {
 
     expect(fn () => send())->toThrow(InvalidArgumentException::class);
 });
+
+describe('random mode', function () {
+    function weights(array $weights): void
+    {
+        config(['revenue.provider.random_weights' => $weights]);
+    }
+
+    it('always succeeds when every other outcome is weighted to zero', function () {
+        mode('random');
+        weights(['success' => 1, 'permanent_failure' => 0, 'timeout_after_success' => 0, 'timeout_before_success' => 0]);
+
+        $result = send();
+
+        expect($result->state)->toBe(ProviderPaymentState::Settled)
+            ->and(DB::table('mock_provider_payments')->count())->toBe(1);
+    });
+
+    it('always fails permanently when weighted entirely toward it', function () {
+        mode('random');
+        weights(['success' => 0, 'permanent_failure' => 1, 'timeout_after_success' => 0, 'timeout_before_success' => 0]);
+
+        expect(fn () => send())->toThrow(ProviderPermanentFailureException::class);
+
+        expect(DB::table('mock_provider_payments')->count())->toBe(0);
+    });
+
+    it('always times out after moving the money when weighted entirely toward it', function () {
+        mode('random');
+        weights(['success' => 0, 'permanent_failure' => 0, 'timeout_after_success' => 1, 'timeout_before_success' => 0]);
+
+        expect(fn () => send())->toThrow(ProviderTimeoutException::class);
+
+        expect(DB::table('mock_provider_payments')->count())->toBe(1);
+    });
+
+    it('always times out before moving any money when weighted entirely toward it', function () {
+        mode('random');
+        weights(['success' => 0, 'permanent_failure' => 0, 'timeout_after_success' => 0, 'timeout_before_success' => 1]);
+
+        expect(fn () => send())->toThrow(ProviderTimeoutException::class);
+
+        expect(DB::table('mock_provider_payments')->count())->toBe(0);
+    });
+
+    it('falls back to success if the weights are misconfigured to sum to zero', function () {
+        mode('random');
+        weights(['success' => 0, 'permanent_failure' => 0, 'timeout_after_success' => 0, 'timeout_before_success' => 0]);
+
+        $result = send();
+
+        expect($result->state)->toBe(ProviderPaymentState::Settled);
+    });
+
+    it('produces more than one outcome across many calls at the default weights', function () {
+        mode('random');
+
+        $outcomes = [];
+
+        foreach (range(1, 100) as $i) {
+            try {
+                send("payout:random:{$i}");
+                $outcomes[] = 'success';
+            } catch (ProviderPermanentFailureException) {
+                $outcomes[] = 'permanent_failure';
+            } catch (ProviderTimeoutException) {
+                $outcomes[] = 'timeout';
+            }
+        }
+
+        expect(count(array_unique($outcomes)))->toBeGreaterThan(1);
+    });
+
+    it('never rolls the dice twice for the same idempotency key', function () {
+        mode('random');
+        weights(['success' => 1, 'permanent_failure' => 0, 'timeout_after_success' => 0, 'timeout_before_success' => 0]);
+
+        $first = send('payout:idempotent-random');
+
+        weights(['success' => 0, 'permanent_failure' => 1, 'timeout_after_success' => 0, 'timeout_before_success' => 0]);
+
+        $second = send('payout:idempotent-random');
+
+        expect($second->wasAlreadyProcessed)->toBeTrue()
+            ->and($second->reference)->toBe($first->reference)
+            ->and(DB::table('mock_provider_payments')->count())->toBe(1);
+    });
+});

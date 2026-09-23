@@ -30,6 +30,10 @@ final class MockPaymentProvider implements PaymentProvider
 
         $mode = (string) config('revenue.provider.mock_mode', 'success');
 
+        if ($mode === 'random') {
+            $mode = $this->rollRandomMode();
+        }
+
         return match ($mode) {
             'success' => $this->settle($idempotencyKey, $amountMinor, $currency, $destinationAccount),
 
@@ -98,5 +102,34 @@ final class MockPaymentProvider implements PaymentProvider
     private function find(string $idempotencyKey): ?object
     {
         return DB::table(self::TABLE)->where('idempotency_key', $idempotencyKey)->first();
+    }
+
+    private function rollRandomMode(): string
+    {
+        $weights = config('revenue.provider.random_weights', [
+            'success' => 70,
+            'permanent_failure' => 10,
+            'timeout_after_success' => 10,
+            'timeout_before_success' => 10,
+        ]);
+
+        $total = array_sum($weights);
+
+        if ($total <= 0) {
+            return 'success';
+        }
+
+        $roll = random_int(1, $total);
+        $cumulative = 0;
+
+        foreach ($weights as $mode => $weight) {
+            $cumulative += $weight;
+
+            if ($roll <= $cumulative) {
+                return $mode;
+            }
+        }
+
+        return 'success'; // unreachable unless $weights sums incorrectly
     }
 }
