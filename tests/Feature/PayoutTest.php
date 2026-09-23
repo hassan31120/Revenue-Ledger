@@ -21,12 +21,6 @@ use App\Services\PayoutRecorder;
 use App\Support\LedgerEntryDraft;
 use Illuminate\Support\Facades\DB;
 
-/**
- * An instructor with a known, payable balance.
- *
- * One instructor on a 10000-minor subscription at 30%: the platform floors to
- * 3000 and the instructor is owed exactly 7000.
- */
 function payableInstructor(int $grossMinor = 10000): Instructor
 {
     $instructor = Instructor::factory()->create();
@@ -93,7 +87,6 @@ describe('a successful payout', function () {
         $instructor = payableInstructor();
         settle(claimFor($instructor));
 
-        // A second subscription for the same instructor.
         $course = Course::where('instructor_id', $instructor->id)->first();
         $subscription = Subscription::factory()->grossMinor(10000)->platformFeeBps(3000)
             ->withCourses([$course])->create();
@@ -137,9 +130,6 @@ describe('a permanent provider failure', function () {
     });
 
     it('uses a different idempotency key for the replacement payout', function () {
-        // A genuine failure means no money moved, so the replacement is a NEW
-        // logical payment and must not reuse the old key — or the provider would
-        // dedupe it against a payment that never happened.
         providerMode('permanent_failure');
         $instructor = payableInstructor();
         $failed = settle(claimFor($instructor));
@@ -168,7 +158,6 @@ describe('a timeout where no money moved', function () {
         $instructor = payableInstructor();
         $payout = settle(claimFor($instructor));
 
-        // Older than the grace period: "no record" now genuinely means no money.
         $payout->forceFill(['created_at' => now()->subHour()])->saveQuietly();
 
         $resolved = reconcile($payout->fresh());
@@ -179,8 +168,6 @@ describe('a timeout where no money moved', function () {
     });
 
     it('stays unknown while still inside the grace period', function () {
-        // A payment may still be propagating inside the provider. Concluding
-        // failure too early is how money gets paid twice.
         providerMode('timeout_before_success');
         $instructor = payableInstructor();
         $payout = settle(claimFor($instructor));
@@ -198,9 +185,8 @@ describe('a timeout AFTER the money moved', function () {
 
         $payout = settle(claimFor($instructor));
 
-        // The provider really did move the money...
         expect(DB::table('mock_provider_payments')->count())->toBe(1)
-            // ...but we do not assert that until it is confirmed.
+
             ->and($payout->status)->toBe(PayoutStatus::Unknown)
             ->and(debitCount($payout))->toBe(0)
             ->and(LedgerEntry::paidMinor($instructor->id))->toBe(0);
@@ -211,7 +197,6 @@ describe('a timeout AFTER the money moved', function () {
         $instructor = payableInstructor();
         settle(claimFor($instructor));
 
-        // The balance still looks payable — and that is exactly the trap.
         expect(LedgerEntry::outstandingMinor($instructor->id))->toBe(7000);
 
         providerMode('success');
@@ -328,7 +313,6 @@ describe('a crashed worker', function () {
         $instructor = payableInstructor();
         $payout = claimFor($instructor);
 
-        // The worker claimed it and then died before the provider answered.
         Payout::whereKey($payout->id)->update([
             'status' => PayoutStatus::Processing->value,
             'updated_at' => now()->subHour(),
@@ -337,8 +321,6 @@ describe('a crashed worker', function () {
         $this->artisan('payouts:reconcile', ['--sync' => true, '--stale-minutes' => 1])
             ->assertExitCode(0);
 
-        // The provider never received it, and the grace period has not passed,
-        // so the payout is unresolved rather than wrongly failed.
         expect($payout->fresh()->status)->toBe(PayoutStatus::Unknown);
     });
 
@@ -352,7 +334,6 @@ describe('a crashed worker', function () {
         } catch (Throwable) {
         }
 
-        // Simulate the worker dying instead of recording the timeout.
         Payout::whereKey($payout->id)->update([
             'status' => PayoutStatus::Processing->value,
             'updated_at' => now()->subHour(),
@@ -415,7 +396,6 @@ describe('what is payable', function () {
     it('does not pay an instructor with a negative balance', function () {
         $instructor = payableInstructor();
 
-        // A clawback that exceeds what is unpaid.
         app(Ledger::class)->post([
             LedgerEntryDraft::forInstructor(
                 instructorId: $instructor->id,

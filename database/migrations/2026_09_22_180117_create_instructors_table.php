@@ -15,8 +15,6 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
 
-            // Opaque account handle at the payment provider. Never a raw bank
-            // detail — this system stores a reference, not payment credentials.
             $table->string('payout_account_ref')->unique();
 
             $table->timestamps();

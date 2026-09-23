@@ -6,20 +6,10 @@ namespace App\Support;
 
 use InvalidArgumentException;
 
-/**
- * Presentation and parsing helpers for minor-unit amounts.
- *
- * Nothing here participates in allocation arithmetic. Money is calculated as
- * integers and only ever becomes a human-readable string at the very edge of the
- * system — a Filament column or console output.
- */
 final class Money
 {
     public const MINOR_PER_MAJOR = 100;
 
-    /**
-     * 10050 => "EGP 100.50"   |   -2500 => "-EGP 25.00"
-     */
     public static function format(int $minorUnits, ?string $currency = null): string
     {
         $currency ??= config('revenue.currency');
@@ -36,12 +26,6 @@ final class Money
         );
     }
 
-    /**
-     * "100.50" => 10050
-     *
-     * Parsed with string operations rather than (float) casting, so a value can
-     * never arrive in the system already rounded.
-     */
     public static function fromMajorString(string $amount): int
     {
         $amount = trim($amount);

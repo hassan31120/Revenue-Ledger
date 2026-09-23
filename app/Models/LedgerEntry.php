@@ -10,14 +10,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/**
- * An immutable financial fact.
- *
- * Rows are written exclusively through App\Services\Ledger. This model is for
- * READING: the database refuses updates and deletes outright (see the triggers in
- * the create_ledger_entries_table migration), so there is deliberately no code
- * here that would let a caller believe otherwise.
- */
 class LedgerEntry extends Model
 {
     public const UPDATED_AT = null;
@@ -50,9 +42,6 @@ class LedgerEntry extends Model
         return $query->whereIn('entry_type', array_map(fn ($t) => $t->value, $types));
     }
 
-    /**
-     * Everything an instructor has ever been credited for subscriptions.
-     */
     public static function earnedMinor(int $instructorId): int
     {
         return (int) static::query()
@@ -61,10 +50,6 @@ class LedgerEntry extends Model
             ->sum('amount_minor');
     }
 
-    /**
-     * Everything actually confirmed as paid out. Payout entries are stored
-     * negative, so this negates the sum to report a positive "paid" figure.
-     */
     public static function paidMinor(int $instructorId): int
     {
         return -(int) static::query()
@@ -73,13 +58,6 @@ class LedgerEntry extends Model
             ->sum('amount_minor');
     }
 
-    /**
-     * What the instructor is owed right now.
-     *
-     * Deliberately the plain sum of EVERY entry type, so refund clawbacks and
-     * manual corrections reduce it automatically. It can be negative, which means
-     * the instructor owes the platform.
-     */
     public static function outstandingMinor(int $instructorId): int
     {
         return (int) static::query()

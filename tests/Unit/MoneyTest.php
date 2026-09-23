@@ -32,7 +32,7 @@ it('parses a major-unit string without ever touching a float', function (string 
 it('refuses input it cannot represent exactly', function (string $input) {
     expect(fn () => Money::fromMajorString($input))->toThrow(InvalidArgumentException::class);
 })->with([
-    '100.505',   // more precision than a minor unit can hold
+    '100.505',
     'abc',
     '',
     '1,000.00',

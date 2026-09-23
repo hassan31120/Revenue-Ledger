@@ -16,14 +16,8 @@ use App\Models\LedgerEntry;
 use App\Models\Subscription;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-/**
- * A subscription running from a fixed date, shared by $count instructors.
- *
- * @return array{0: Subscription, 1: Collection<int, Instructor>}
- */
 function refundableSubscription(int $count = 3, int $grossMinor = 12000): array
 {
     $instructors = Instructor::factory()->count($count)->create();
@@ -69,7 +63,6 @@ describe('pro-rating by unused days', function () {
     it('returns the unused portion of the term', function () {
         [$subscription] = refundableSubscription(grossMinor: 12000);
 
-        // 40 days used of 100, so 60 days unused: 60% of 12000 = 7200.
         $refund = refund($subscription, asOf: Carbon::parse('2026-02-10'));
 
         expect($refund->amount_minor)->toBe(7200);
@@ -96,7 +89,6 @@ describe('who gives the money back', function () {
     it('claws back from instructors and the platform in the original proportions', function () {
         [$subscription, $instructors] = refundableSubscription(3, 12000);
 
-        // Original: platform 3600, pool 8400, three instructors at 2800 each.
         refund($subscription, 12000);
 
         foreach ($instructors as $instructor) {
@@ -136,12 +128,10 @@ describe('several partial refunds', function () {
         [$subscription, $instructors] = refundableSubscription(3, 10000);
         [$other, $otherInstructors] = refundableSubscription(3, 10000);
 
-        // Three partial refunds...
         refund($subscription, 3000, 'rf_a');
         refund($subscription, 3000, 'rf_b');
         refund($subscription, 4000, 'rf_c');
 
-        // ...versus one refund of the whole amount.
         refund($other, 10000, 'rf_single');
 
         $piecewise = $instructors->map(fn ($i) => clawbackFor($subscription, $i->id))->sort()->values()->all();
@@ -153,7 +143,6 @@ describe('several partial refunds', function () {
     it('never claws back more than was originally allocated', function () {
         [$subscription, $instructors] = refundableSubscription(3, 10001);
 
-        // Amounts chosen to round awkwardly at every step.
         refund($subscription, 3337, 'rf_a');
         refund($subscription, 3332, 'rf_b');
         refund($subscription, 3332, 'rf_c');
@@ -207,7 +196,6 @@ describe('refunding an instructor who was already paid', function () {
         [$subscription, $instructors] = refundableSubscription(1, 10000);
         $instructor = $instructors->first();
 
-        // Paid out in full first.
         $payout = app(ClaimInstructorPayout::class)->handle($instructor->id, 1);
         app(SettlePayout::class)->handle($payout);
 
@@ -217,7 +205,7 @@ describe('refunding an instructor who was already paid', function () {
 
         expect(LedgerEntry::outstandingMinor($instructor->id))->toBe(-7000)
             ->and(InstructorBalance::find($instructor->id)->outstanding_minor)->toBe(-7000)
-            // The original earning and payout entries are untouched.
+
             ->and(LedgerEntry::earnedMinor($instructor->id))->toBe(7000)
             ->and(LedgerEntry::paidMinor($instructor->id))->toBe(7000);
     });
@@ -241,13 +229,11 @@ describe('refunding an instructor who was already paid', function () {
         app(SettlePayout::class)->handle(app(ClaimInstructorPayout::class)->handle($instructor->id, 1));
         refund($subscription, 10000);
 
-        // New revenue arrives for the same instructor.
         $course = Course::where('instructor_id', $instructor->id)->first();
         $next = Subscription::factory()->grossMinor(20000)->platformFeeBps(3000)
             ->withCourses([$course])->create();
         app(AllocateSubscriptionRevenue::class)->handle($next);
 
-        // 14000 earned, minus the 7000 owed.
         expect(LedgerEntry::outstandingMinor($instructor->id))->toBe(7000);
 
         $payout = app(ClaimInstructorPayout::class)->handle($instructor->id, 1);
@@ -278,7 +264,7 @@ describe('history is never rewritten', function () {
 
         $entries = LedgerEntry::where('source_type', 'refund')->where('source_id', $refund->id)->get();
 
-        expect($entries)->toHaveCount(4) // three instructors plus the platform
+        expect($entries)->toHaveCount(4)
             ->and($entries->every(fn ($e) => $e->entry_type === LedgerEntryType::RefundAdjustment))->toBeTrue();
     });
 

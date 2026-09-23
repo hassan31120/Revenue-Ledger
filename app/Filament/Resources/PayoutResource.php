@@ -13,15 +13,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-/**
- * Payout history — read only.
- *
- * The one screen that matters operationally is the `unknown` filter: those are
- * payouts whose outcome the system refuses to guess at, and the instructors they
- * belong to are frozen until reconciliation resolves them. They are shown in a
- * warning colour rather than a danger one, because an unknown payout is NOT a
- * failure and must not be read as one.
- */
 class PayoutResource extends Resource
 {
     protected static ?string $model = Payout::class;
@@ -108,10 +99,6 @@ class PayoutResource extends Resource
         return parent::getEloquentQuery()->with('instructor');
     }
 
-    /**
-     * Surfaces unresolved payouts in the sidebar, so nobody has to remember to
-     * go looking for them.
-     */
     public static function getNavigationBadge(): ?string
     {
         $unknown = static::getModel()::where('status', PayoutStatus::Unknown->value)->count();

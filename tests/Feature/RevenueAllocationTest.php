@@ -11,13 +11,7 @@ use App\Models\InstructorBalance;
 use App\Models\LedgerEntry;
 use App\Models\RevenueAllocation;
 use App\Models\Subscription;
-use Illuminate\Support\Collection;
 
-/**
- * Build a subscription shared by $count instructors, one course each.
- *
- * @return array{0: Subscription, 1: Collection<int, Instructor>}
- */
 function sharedSubscription(int $count, int $grossMinor, int $feeBps = 3000): array
 {
     $instructors = Instructor::factory()->count($count)->create();
@@ -109,7 +103,7 @@ describe('idempotency', function () {
         allocate($subscription);
 
         expect(RevenueAllocation::count())->toBe(3)
-            ->and(LedgerEntry::count())->toBe(4); // 3 earnings + 1 platform fee
+            ->and(LedgerEntry::count())->toBe(4);
     });
 
     it('does not inflate balances when run twice', function () {
@@ -162,7 +156,7 @@ describe('the snapshot protects historical money', function () {
         allocate($subscription);
 
         config(['revenue.platform_fee_bps' => 9000]);
-        allocate($subscription); // a re-run under a new global fee
+        allocate($subscription);
 
         expect(LedgerEntry::earnedMinor($instructors[0]->id))->toBe(3500)
             ->and(RevenueAllocation::where('instructor_id', $instructors[0]->id)->first()->platform_fee_bps)
@@ -174,7 +168,6 @@ describe('the snapshot protects historical money', function () {
 
         allocate($subscription);
 
-        // The catalog changes after the fact.
         $newOwner = Instructor::factory()->create();
         Course::where('instructor_id', $instructors[0]->id)->update(['instructor_id' => $newOwner->id]);
 
@@ -189,7 +182,6 @@ describe('edge cases', function () {
 
         allocate($subscription);
 
-        // 30% of 19999 floors to 5999; the instructor takes the remaining 14000.
         expect(LedgerEntry::earnedMinor($instructors[0]->id))->toBe(14000)
             ->and((int) LedgerEntry::where('account_type', 'platform')->sum('amount_minor'))->toBe(5999);
     });

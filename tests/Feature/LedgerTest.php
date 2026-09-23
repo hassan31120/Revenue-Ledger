@@ -101,7 +101,6 @@ describe('deriving earned, paid and outstanding', function () {
             currency: 'EGP', sourceType: 'refund', sourceId: 1, idempotencyKey: 'refund:1:ins:'.$instructor->id,
         )]);
 
-        // Already paid in full, then refunded: the instructor now owes the platform.
         expect(LedgerEntry::outstandingMinor($instructor->id))->toBe(-2000)
             ->and(LedgerEntry::earnedMinor($instructor->id))->toBe(5000)
             ->and(LedgerEntry::paidMinor($instructor->id))->toBe(5000);
@@ -167,7 +166,6 @@ describe('idempotency', function () {
 
         post([earning($instructor, 5000, 1)]);
 
-        // A retry that covers the original event plus one more.
         $written = post([
             earning($instructor, 5000, 1),
             earning($instructor, 2000, 2),
@@ -191,7 +189,6 @@ describe('ledger:verify', function () {
         $instructor = Instructor::factory()->create();
         post([earning($instructor, 5000, 1)]);
 
-        // Corrupt the cache — the ledger itself cannot be corrupted.
         InstructorBalance::where('instructor_id', $instructor->id)
             ->update(['outstanding_minor' => 999999]);
 

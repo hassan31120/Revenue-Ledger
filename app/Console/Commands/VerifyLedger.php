@@ -6,25 +6,8 @@ namespace App\Console\Commands;
 
 use App\Support\Money;
 use Illuminate\Console\Command;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Audits the ledger against everything derived from it.
- *
- * Two independent questions:
- *
- *   1. Does the instructor_balances projection still agree with the ledger?
- *      Any disagreement is a bug — the projection is a cache of a pure function.
- *
- *   2. Is money conserved? Every business event should have produced ledger
- *      entries summing to exactly its own amount: a subscription to its gross, a
- *      refund to its negation, a confirmed payout to its negation.
- *
- * Exits non-zero on any discrepancy, so it can be wired into CI or a cron alert.
- * Every check is a single aggregate query — nothing is loaded into memory, which
- * is what lets this run against tens of millions of rows.
- */
 class VerifyLedger extends Command
 {
     protected $signature = 'ledger:verify
@@ -54,9 +37,6 @@ class VerifyLedger extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * The projection is a cache. Recompute it from scratch and compare.
-     */
     private function verifyBalances(): int
     {
         $query = DB::table('instructor_balances as ib')
@@ -107,10 +87,6 @@ class VerifyLedger extends Command
         return 1;
     }
 
-    /**
-     * Every allocated subscription must have produced entries — instructor shares
-     * plus the platform fee — summing to exactly its gross amount.
-     */
     private function verifySubscriptionsConserveMoney(): int
     {
         $broken = DB::table('subscriptions as s')
@@ -135,9 +111,6 @@ class VerifyLedger extends Command
         );
     }
 
-    /**
-     * A refund's entries must sum to exactly the negation of the refunded amount.
-     */
     private function verifyRefundsConserveMoney(): int
     {
         if (! DB::getSchemaBuilder()->hasTable('refunds')) {
@@ -166,9 +139,6 @@ class VerifyLedger extends Command
         );
     }
 
-    /**
-     * A confirmed payout must have debited exactly its own amount — exactly once.
-     */
     private function verifyPayoutsConserveMoney(): int
     {
         if (! DB::getSchemaBuilder()->hasTable('payouts')) {
@@ -198,10 +168,6 @@ class VerifyLedger extends Command
         );
     }
 
-    /**
-     * An instructor with ledger entries but no projection row would silently never
-     * be paid, because payout discovery reads the projection.
-     */
     private function verifyNoOrphanedLedgerEntries(): int
     {
         $orphans = DB::table('ledger_entries as le')
@@ -222,9 +188,6 @@ class VerifyLedger extends Command
         return 1;
     }
 
-    /**
-     * @param  Collection<int, object>  $broken
-     */
     private function reportConservation($broken, string $label, callable $describe, string $okMessage): int
     {
         if ($broken->isEmpty()) {

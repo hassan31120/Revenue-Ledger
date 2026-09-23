@@ -11,26 +11,10 @@ use App\Models\Payout;
 use App\Support\LedgerEntryDraft;
 use Illuminate\Support\Facades\DB;
 
-/**
- * The single implementation of "what happens when a payout resolves".
- *
- * Both paths into a terminal state — the first send, and reconciliation after a
- * timeout — go through here. Duplicating this logic would mean two places where
- * the ledger debit might be written under subtly different conditions, and that
- * is the one piece of code in the system that must be written exactly once.
- */
 final class PayoutRecorder
 {
     public function __construct(private readonly Ledger $ledger) {}
 
-    /**
-     * The payment is confirmed. Recognise it and debit the ledger, atomically.
-     *
-     * Both halves are idempotent: the status change is conditional on the status
-     * we believe the row holds, and the debit is protected by a unique
-     * idempotency key derived from the payout id. Two workers both concluding
-     * "paid" therefore produce one debit, not two.
-     */
     public function markPaid(Payout $payout, string $reference): void
     {
         DB::transaction(function () use ($payout, $reference) {
@@ -56,25 +40,11 @@ final class PayoutRecorder
         });
     }
 
-    /**
-     * The provider stated definitively that no money moved.
-     *
-     * No ledger entry is written, so the balance remains payable and the next run
-     * opens a NEW payout for it. This row is never revived.
-     */
     public function markFailed(Payout $payout, string $error): void
     {
         $this->transition($payout, PayoutStatus::Failed, ['last_error' => $error]);
     }
 
-    /**
-     * The outcome is unresolved.
-     *
-     * No ledger entry, and the payout stays open — which keeps the instructor's
-     * single open-payout slot occupied, so nothing can pay them again while the
-     * question is outstanding. Staying stuck here is the correct behaviour;
-     * guessing is the bug.
-     */
     public function markUnknown(Payout $payout, string $error, ?int $delaySeconds = null): void
     {
         $delaySeconds ??= (int) config('revenue.payouts.reconcile_delay_seconds');
@@ -104,9 +74,6 @@ final class PayoutRecorder
         ]);
     }
 
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
     private function transition(Payout $payout, PayoutStatus $to, array $attributes = []): void
     {
         $from = $payout->status;
@@ -115,8 +82,6 @@ final class PayoutRecorder
             throw InvalidPayoutTransitionException::between($payout->id, $from, $to);
         }
 
-        // Conditional on the status this process believes the row holds, so a
-        // concurrent change is never clobbered.
         Payout::query()
             ->whereKey($payout->id)
             ->where('status', $from->value)

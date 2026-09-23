@@ -13,16 +13,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // The only binding in the application. Swapping in a real payment rail is
-        // a one-line change here; nothing in the financial core knows the
-        // difference, because nothing in it names a concrete provider.
         $this->app->bind(PaymentProvider::class, MockPaymentProvider::class);
     }
 
     public function boot(): void
     {
-        // A silently-ignored mass assignment in a financial model would be a money
-        // bug, not a convenience. Fail loudly instead.
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
     }
 }

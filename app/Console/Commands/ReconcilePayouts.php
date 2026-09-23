@@ -8,20 +8,7 @@ use App\Actions\ReconcilePayout;
 use App\Jobs\ReconcilePayoutJob;
 use App\Models\Payout;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Collection;
 
-/**
- * Sweeps up every payout whose outcome is not settled, and asks the provider.
- *
- * Two populations, both of which mean "we do not know":
- *
- *   unknown     a timeout, or a job that died after the provider was called
- *   processing  claimed by a worker that never came back — a crash, an OOM kill,
- *               a deploy mid-flight
- *
- * The second is why a crashed worker cannot strand money: nothing depends on the
- * job that died ever running again.
- */
 class ReconcilePayouts extends Command
 {
     protected $signature = 'payouts:reconcile
@@ -69,9 +56,6 @@ class ReconcilePayouts extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * @return Collection<int, Payout>
-     */
     private function unresolvedPayouts(int $staleMinutes)
     {
         if ($payoutId = $this->option('payout')) {
@@ -79,7 +63,6 @@ class ReconcilePayouts extends Command
         }
 
         if ($this->option('force')) {
-            // Operator override: ask about everything unresolved, backoff or not.
             return Payout::query()->open()->orderBy('id')->get();
         }
 

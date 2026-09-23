@@ -96,14 +96,10 @@ describe('timeout AFTER the money moved', function () {
 
         expect(fn () => send())->toThrow(ProviderTimeoutException::class);
 
-        // The caller was told nothing, but the money is gone.
         expect(DB::table('mock_provider_payments')->count())->toBe(1);
     });
 
     it('is indistinguishable from a pre-success timeout at the moment it happens', function () {
-        // Both modes raise the same exception type carrying the same key. The
-        // caller genuinely cannot tell them apart, which is exactly why a timeout
-        // must never be recorded as a failure.
         mode('timeout_after_success');
         $after = null;
         try {
@@ -133,7 +129,6 @@ describe('timeout AFTER the money moved', function () {
         } catch (ProviderTimeoutException) {
         }
 
-        // The caller holds only the key it sent — never a reference.
         $status = provider()->getPaymentStatus('payout:77');
 
         expect($status->isSettled())->toBeTrue()
@@ -155,8 +150,6 @@ describe('idempotency keys', function () {
     });
 
     it('honours a key that was accepted during a timeout', function () {
-        // The critical retry path: the provider took the money, we never heard
-        // back, and the job retries with the same key.
         mode('timeout_after_success');
 
         try {
@@ -164,7 +157,7 @@ describe('idempotency keys', function () {
         } catch (ProviderTimeoutException) {
         }
 
-        mode('success'); // the network recovers
+        mode('success');
         $retry = send('payout:99');
 
         expect($retry->wasAlreadyProcessed)->toBeTrue()
@@ -179,8 +172,6 @@ describe('idempotency keys', function () {
         mode('permanent_failure');
         $second = send('payout:7');
 
-        // Already settled wins: the provider reports the original payment rather
-        // than re-evaluating it.
         expect($second->reference)->toBe($first->reference);
     });
 

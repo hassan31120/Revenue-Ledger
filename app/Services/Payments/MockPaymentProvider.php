@@ -10,26 +10,6 @@ use App\Exceptions\ProviderTimeoutException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-/**
- * A stand-in for a real payment rail, with provider-side state.
- *
- * It is deliberately not a stub. It keeps its own record of every payment it has
- * accepted, keyed by the idempotency key, so that:
- *
- *   - re-sending a key returns the ORIGINAL payment instead of moving money twice;
- *   - after a timeout, getPaymentStatus() can tell the truth about whether the
- *     money moved — including the case where it did.
- *
- * Behaviour is chosen by config('revenue.provider.mock_mode'):
- *
- *   success                 money moves, caller is told
- *   permanent_failure       money does not move, caller is told
- *   timeout_after_success   MONEY MOVES, then the caller gets a timeout
- *   timeout_before_success  money does not move, and the caller gets a timeout
- *
- * The third mode is the whole point. From the caller's side it is indistinguishable
- * from the fourth — which is exactly why a timeout may never be treated as failure.
- */
 final class MockPaymentProvider implements PaymentProvider
 {
     private const TABLE = 'mock_provider_payments';
@@ -40,9 +20,6 @@ final class MockPaymentProvider implements PaymentProvider
         string $currency,
         string $destinationAccount,
     ): PayoutResult {
-        // Idempotency first, before any mode handling: a key the provider has
-        // already accepted returns the original payment whatever the mode is.
-        // This is what makes retrying a timed-out payout safe.
         if ($existing = $this->find($idempotencyKey)) {
             return new PayoutResult(
                 reference: $existing->reference,
@@ -61,7 +38,6 @@ final class MockPaymentProvider implements PaymentProvider
                 'insufficient platform balance',
             ),
 
-            // The money moves, and THEN the connection drops.
             'timeout_after_success' => $this->settleThenTimeout(
                 $idempotencyKey, $amountMinor, $currency, $destinationAccount
             ),
@@ -78,8 +54,6 @@ final class MockPaymentProvider implements PaymentProvider
             ?? DB::table(self::TABLE)->where('reference', $referenceOrIdempotencyKey)->first();
 
         if ($payment === null) {
-            // The provider has never heard of it, so no money moved. This is the
-            // only evidence that justifies calling a payout failed after a timeout.
             return new PaymentStatus(ProviderPaymentState::NotFound);
         }
 
@@ -101,7 +75,6 @@ final class MockPaymentProvider implements PaymentProvider
     {
         $this->record($key, $amountMinor, $currency, $account);
 
-        // The caller never learns the reference. All it gets is silence.
         throw new ProviderTimeoutException($key);
     }
 

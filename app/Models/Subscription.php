@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\SubscriptionStatus;
-use Database\Factories\SubscriptionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Subscription extends Model
 {
-    /** @use HasFactory<SubscriptionFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -34,7 +32,7 @@ class Subscription extends Model
     {
         return [
             'status' => SubscriptionStatus::class,
-            // Minor units and basis points are both integers by construction.
+
             'gross_amount_minor' => 'integer',
             'platform_fee_bps' => 'integer',
             'purchased_at' => 'datetime',
@@ -53,9 +51,6 @@ class Subscription extends Model
         return $this->belongsTo(Plan::class);
     }
 
-    /**
-     * The courses this subscription granted access to, as captured at purchase.
-     */
     public function courses(): BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'subscription_courses');
@@ -71,12 +66,6 @@ class Subscription extends Model
         return $this->hasMany(Refund::class);
     }
 
-    /**
-     * Total length of the paid term, in whole days.
-     *
-     * Refund proration divides by this, and the database guarantees it is
-     * positive (see the subscriptions_term_ordered CHECK constraint).
-     */
     public function termDays(): int
     {
         return (int) $this->starts_at->diffInDays($this->ends_at);

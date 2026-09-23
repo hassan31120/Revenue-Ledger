@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Enums\SubscriptionStatus;
-use App\Models\Course;
 use App\Models\Plan;
 use App\Models\Student;
 use App\Models\Subscription;
@@ -13,9 +12,6 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
-/**
- * @extends Factory<Subscription>
- */
 class SubscriptionFactory extends Factory
 {
     public function definition(): array
@@ -24,20 +20,14 @@ class SubscriptionFactory extends Factory
 
         return [
             'student_id' => Student::factory(),
-            // Reuse an existing plan when there is one. Plan codes are a
-            // three-value enum under a unique index, so minting a fresh plan for
-            // every subscription collides as soon as a test creates several.
+
             'plan_id' => fn () => Plan::query()->orderBy('id')->value('id')
                 ?? Plan::factory()->create()->id,
             'status' => SubscriptionStatus::Active,
 
-            // Derived from whichever plan this subscription ends up on, including
-            // one supplied via forPlan(). Resolved lazily so that overriding the
-            // plan does not leave a second, orphaned plan behind.
             'gross_amount_minor' => fn (array $attributes) => $this->plan($attributes)->price_minor,
             'currency' => fn (array $attributes) => $this->plan($attributes)->currency,
 
-            // Snapshot the commission as it stands at purchase time.
             'platform_fee_bps' => (int) config('revenue.platform_fee_bps'),
 
             'payment_reference' => 'pay_'.Str::lower(Str::random(20)),
@@ -72,11 +62,6 @@ class SubscriptionFactory extends Factory
         ]);
     }
 
-    /**
-     * Attach the courses whose instructors will share this subscription's revenue.
-     *
-     * @param  iterable<Course>  $courses
-     */
     public function withCourses(iterable $courses): static
     {
         return $this->afterCreating(function (Subscription $subscription) use ($courses) {
@@ -86,9 +71,6 @@ class SubscriptionFactory extends Factory
         });
     }
 
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
     private function plan(array $attributes): Plan
     {
         return Plan::findOrFail($attributes['plan_id']);

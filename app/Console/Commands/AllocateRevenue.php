@@ -10,17 +10,6 @@ use App\Support\Money;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 
-/**
- * Allocates revenue for subscriptions that have not been allocated yet.
- *
- * In production this work happens when a payment is confirmed; this command
- * exists for backfill and for demonstrating that running allocation twice changes
- * nothing.
- *
- * Scale: subscriptions are walked with chunkById and filtered by a NOT EXISTS
- * subquery, so the command touches only unallocated rows and never materialises
- * the table in memory.
- */
 class AllocateRevenue extends Command
 {
     protected $signature = 'revenue:allocate
@@ -45,7 +34,7 @@ class AllocateRevenue extends Command
                 $allocatedMinor += $split->instructorPoolMinor();
 
                 if ($limit > 0 && $processed >= $limit) {
-                    return false; // stop chunking
+                    return false;
                 }
             }
         });
@@ -59,9 +48,6 @@ class AllocateRevenue extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * @return Builder<Subscription>
-     */
     private function pendingSubscriptions(): Builder
     {
         $query = Subscription::query();
@@ -70,8 +56,6 @@ class AllocateRevenue extends Command
             return $query->whereKey((int) $id);
         }
 
-        // Already-allocated subscriptions are excluded in SQL rather than by
-        // loading them and checking in PHP.
         return $query->whereNotExists(
             fn ($sub) => $sub->selectRaw('1')
                 ->from('revenue_allocations')

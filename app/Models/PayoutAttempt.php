@@ -7,9 +7,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/**
- * One conversation with the payment provider. Append-only.
- */
 class PayoutAttempt extends Model
 {
     public const UPDATED_AT = null;

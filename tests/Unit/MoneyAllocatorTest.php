@@ -5,19 +5,8 @@ declare(strict_types=1);
 use App\Support\MoneyAllocator;
 use App\Support\RevenueSplit;
 
-/*
-|--------------------------------------------------------------------------
-| Revenue allocation
-|--------------------------------------------------------------------------
-|
-| No database, no framework. These tests describe the rounding policy itself,
-| which is the part of the system a reviewer is most likely to push on.
-|
-*/
-
 describe('platform commission', function () {
     it('floors the commission so sub-unit dust falls to instructors', function () {
-        // 30% of 10001 is 3000.3. Flooring keeps 3000 and leaves 7001 in the pool.
         $split = MoneyAllocator::split(10001, 3000, [1 => 1]);
 
         expect($split->platformMinor)->toBe(3000)
@@ -44,7 +33,6 @@ describe('dividing the instructor pool', function () {
     it('gives a single instructor the whole pool', function () {
         $split = MoneyAllocator::split(10050, 3000, [7 => 1]);
 
-        // 30% of 10050 = 3015 exactly; the pool is 7035.
         expect($split->platformMinor)->toBe(3015)
             ->and($split->forInstructor(7))->toBe(7035);
     });
@@ -57,8 +45,6 @@ describe('dividing the instructor pool', function () {
     });
 
     it('hands the leftover minor unit to the lowest id when remainders tie', function () {
-        // Pool of 7000 across three equal weights: 2333 each, one unit left over.
-        // Every remainder is identical, so the ascending-id tie-break decides.
         $split = MoneyAllocator::split(10000, 3000, [5 => 1, 9 => 1, 2 => 1]);
 
         expect($split->platformMinor)->toBe(3000)
@@ -82,7 +68,6 @@ describe('dividing the instructor pool', function () {
     });
 
     it('respects unequal weights', function () {
-        // Pool 7000, weights 3:1 -> 5250 / 1750.
         $split = MoneyAllocator::split(10000, 3000, [1 => 3, 2 => 1]);
 
         expect($split->forInstructor(1))->toBe(5250)
@@ -90,12 +75,6 @@ describe('dividing the instructor pool', function () {
     });
 
     it('sends the leftover to the largest remainder, not merely the lowest id', function () {
-        // Pool 100, weights 1:1:4 over total 6.
-        //   id 1 -> 100*1/6 = 16 r 4
-        //   id 2 -> 100*1/6 = 16 r 4
-        //   id 3 -> 100*4/6 = 66 r 4
-        // Floors total 98, so two units are left over. All remainders tie at 4,
-        // so ids 1 and 2 take them.
         $split = MoneyAllocator::split(100, 0, [1 => 1, 2 => 1, 3 => 4]);
 
         expect($split->instructorMinor)->toExactlyAccountFor(100)
@@ -127,7 +106,7 @@ describe('determinism', function () {
 
 describe('money is never created or destroyed', function () {
     it('conserves every minor unit across thousands of random splits', function () {
-        mt_srand(20260922); // Seeded: a failure is reproducible, not a mystery.
+        mt_srand(20260922);
 
         for ($i = 0; $i < 3000; $i++) {
             $gross = mt_rand(0, 5_000_000);
@@ -147,7 +126,6 @@ describe('money is never created or destroyed', function () {
                 "Lost or invented money: gross {$gross}, fee {$feeBps}bps, weights ".json_encode($weights)
             );
 
-            // No instructor may receive a negative amount from a positive split.
             expect(min($split->instructorMinor))->toBeGreaterThanOrEqual(0);
         }
     });
@@ -186,8 +164,6 @@ describe('rejecting nonsense', function () {
     });
 
     it('refuses to distribute a negative amount', function () {
-        // Clawbacks negate a positive distribution instead, so that a refund of X
-        // mirrors an allocation of X exactly.
         expect(fn () => MoneyAllocator::distribute(-100, [1 => 1]))
             ->toThrow(InvalidArgumentException::class);
     });

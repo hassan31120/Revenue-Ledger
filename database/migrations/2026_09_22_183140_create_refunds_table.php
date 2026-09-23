@@ -18,13 +18,8 @@ return new class extends Migration
             $table->unsignedBigInteger('amount_minor');
             $table->string('reason');
 
-            // When the money went back to the student. DATETIME for the same
-            // reason the subscription term columns are: no timezone conversion on
-            // a financial instant.
             $table->dateTime('refunded_at');
 
-            // The external refund that this record corresponds to. Unique, so the
-            // same refund can never be clawed back from instructors twice.
             $table->string('provider_refund_reference')->unique();
 
             $table->timestamp('created_at')->useCurrent();

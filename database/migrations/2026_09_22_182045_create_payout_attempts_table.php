@@ -8,13 +8,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Every single conversation with the payment provider, append-only.
-     *
-     * Including the ones that timed out and the ones that were only status
-     * lookups. When an auditor asks "why does this payout say paid when the job
-     * log shows an error", this table is the answer.
-     */
     public function up(): void
     {
         Schema::create('payout_attempts', function (Blueprint $table) {
@@ -26,11 +19,11 @@ return new class extends Migration
             $table->enum('kind', ['send', 'status_lookup']);
 
             $table->enum('outcome', [
-                'success',            // provider confirmed the money moved
-                'permanent_failure',  // provider refused; no money moved
-                'timeout',            // no answer; outcome UNKNOWN
-                'not_found',          // provider has no record of it
-                'pending',            // provider has it but has not finished
+                'success',
+                'permanent_failure',
+                'timeout',
+                'not_found',
+                'pending',
             ]);
 
             $table->string('idempotency_key_sent');

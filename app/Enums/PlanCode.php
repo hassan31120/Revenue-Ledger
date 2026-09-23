@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
-/**
- * The three subscription terms. Every term is paid in full, upfront.
- */
 enum PlanCode: string
 {
     case Monthly = 'monthly';

@@ -12,17 +12,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-/**
- * Instructor balances — read only.
- *
- * Deliberately inert. There is no form, no action, and no mutation path of any
- * kind: money moves through Actions and console commands, never through a screen.
- * A reviewer should be able to confirm that at a glance.
- *
- * The figures come from the instructor_balances projection rather than from a
- * live sum of the ledger, because summing tens of millions of rows to paint a
- * table is not viable. `ledger:verify` is what guarantees the two agree.
- */
 class InstructorBalanceResource extends Resource
 {
     protected static ?string $model = InstructorBalance::class;
@@ -48,8 +37,7 @@ class InstructorBalanceResource extends Resource
                     ->label('Total earned')
                     ->alignEnd()
                     ->sortable()
-                    // Minor units become a human-readable string HERE, at the very
-                    // edge of the system, and nowhere else.
+
                     ->formatStateUsing(fn (int $state): string => Money::format($state)),
 
                 Tables\Columns\TextColumn::make('total_paid_minor')
@@ -64,9 +52,7 @@ class InstructorBalanceResource extends Resource
                     ->sortable()
                     ->weight('bold')
                     ->formatStateUsing(fn (int $state): string => Money::format($state))
-                    // A negative balance means the instructor owes the platform
-                    // after a refund. It is a real state, not an error — but it
-                    // should be obvious at a glance.
+
                     ->color(fn (int $state): string => match (true) {
                         $state < 0 => 'danger',
                         $state === 0 => 'gray',
@@ -92,8 +78,7 @@ class InstructorBalanceResource extends Resource
                     ->query(fn (Builder $query) => $query->where('outstanding_minor', '<', 0)),
             ])
             ->defaultSort('outstanding_minor', 'desc')
-            // Server-side pagination: the table never loads more than a page,
-            // however many instructors exist.
+
             ->paginated([25, 50, 100])
             ->actions([])
             ->bulkActions([]);

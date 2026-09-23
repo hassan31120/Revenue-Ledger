@@ -11,9 +11,6 @@ class ListInstructorBalances extends ListRecords
 {
     protected static string $resource = InstructorBalanceResource::class;
 
-    /**
-     * No header actions: nothing on this screen may create or change money.
-     */
     protected function getHeaderActions(): array
     {
         return [];

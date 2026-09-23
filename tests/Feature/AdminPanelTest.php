@@ -15,9 +15,6 @@ use App\Models\User;
 
 use function Pest\Livewire\livewire;
 
-// Signed in for every test in this file. Done here rather than via a chained
-// ->actingAs(...), because the argument to that would be evaluated while tests
-// are still being collected — before the application exists.
 beforeEach(fn () => test()->actingAs(User::factory()->create()));
 
 function instructorWithBalance(int $grossMinor = 10000): Instructor
@@ -57,7 +54,7 @@ describe('instructor balances screen', function () {
             ->assertOk()
             ->assertCanSeeTableRecords(InstructorBalance::all())
             ->assertSee($instructor->name)
-            // Minor units are rendered as money at the edge, not stored that way.
+
             ->assertSee('EGP 70.00');
     });
 
@@ -125,7 +122,6 @@ describe('payouts screen', function () {
             ->assertOk()
             ->assertSee('Unknown — needs reconciliation');
 
-        // An unresolved payout must never be presented as a failure.
         expect(PayoutStatus::Unknown->color())->toBe('warning')
             ->and(PayoutStatus::Unknown->color())->not->toBe(PayoutStatus::Failed->color());
     });

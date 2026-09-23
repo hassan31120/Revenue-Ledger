@@ -8,14 +8,6 @@ use App\Enums\AccountType;
 use App\Enums\LedgerEntryType;
 use InvalidArgumentException;
 
-/**
- * A ledger row that has not been written yet.
- *
- * This is the write contract for the ledger. Callers describe the financial event
- * they are recording; the Ledger service decides how it reaches the database. The
- * account-consistency rule is checked here as well as by a CHECK constraint, so a
- * mistake surfaces at the call site instead of as a SQL error.
- */
 final readonly class LedgerEntryDraft
 {
     public function __construct(
@@ -70,9 +62,6 @@ final readonly class LedgerEntryDraft
         );
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     public function toRow(): array
     {
         return [

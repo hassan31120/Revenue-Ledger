@@ -19,14 +19,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-/**
- * A demo dataset large enough to be interesting and small enough to seed quickly.
- *
- * The shape matters more than the size: every subscription deliberately spans
- * courses from SEVERAL instructors, and the plan prices are chosen so that the
- * instructor pool rarely divides evenly. Remainder handling is therefore exercised
- * by ordinary seeded data, not only by contrived tests.
- */
 class DatabaseSeeder extends Seeder
 {
     private const INSTRUCTORS = 12;
@@ -56,8 +48,6 @@ class DatabaseSeeder extends Seeder
 
         $this->seedSubscriptions($plans, $students, $courses);
 
-        // Allocate the seeded payments, so a fresh database already has a ledger,
-        // instructor balances and payable outstanding amounts to demonstrate with.
         Artisan::call('revenue:allocate');
 
         $this->command?->info('Admin login: admin@example.test / password');
@@ -71,10 +61,6 @@ class DatabaseSeeder extends Seeder
         ));
     }
 
-    /**
-     * The Filament panel needs somebody to log in as. Credentials are printed so
-     * a fresh clone is usable immediately; this seeder never runs in production.
-     */
     private function seedAdminUser(): void
     {
         User::firstOrCreate(
@@ -83,9 +69,6 @@ class DatabaseSeeder extends Seeder
         );
     }
 
-    /**
-     * @return Collection<int, Plan>
-     */
     private function seedPlans(): Collection
     {
         return collect(PlanCode::cases())->map(fn (PlanCode $code) => Plan::firstOrCreate(
@@ -94,11 +77,6 @@ class DatabaseSeeder extends Seeder
         ));
     }
 
-    /**
-     * @param  Collection<int, Plan>  $plans
-     * @param  Collection<int, Student>  $students
-     * @param  Collection<int, Course>  $courses
-     */
     private function seedSubscriptions($plans, $students, $courses): void
     {
         $now = Carbon::now();
@@ -124,8 +102,6 @@ class DatabaseSeeder extends Seeder
             ];
         }
 
-        // One bulk insert rather than 200 round trips. The same habit is what keeps
-        // this system viable at 500k subscriptions.
         foreach (array_chunk($rows, 100) as $chunk) {
             Subscription::insert($chunk);
         }
@@ -133,12 +109,6 @@ class DatabaseSeeder extends Seeder
         $this->attachCourses($courses);
     }
 
-    /**
-     * Give every subscription access to courses from 2-4 DIFFERENT instructors,
-     * so that revenue genuinely has to be split.
-     *
-     * @param  Collection<int, Course>  $courses
-     */
     private function attachCourses($courses): void
     {
         $byInstructor = $courses->groupBy('instructor_id');

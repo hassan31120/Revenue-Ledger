@@ -17,14 +17,12 @@ return new class extends Migration
             $table->string('name');
             $table->unsignedSmallInteger('duration_months');
 
-            // Integer minor units. EGP 100.50 is stored as 10050.
             $table->unsignedBigInteger('price_minor');
             $table->char('currency', 3);
 
             $table->timestamps();
         });
 
-        // A plan with no duration would make refund proration divide by zero.
         DB::statement('ALTER TABLE plans ADD CONSTRAINT plans_duration_positive CHECK (duration_months > 0)');
         DB::statement('ALTER TABLE plans ADD CONSTRAINT plans_price_non_negative CHECK (price_minor >= 0)');
     }
